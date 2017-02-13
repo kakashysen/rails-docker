@@ -1,0 +1,39 @@
+version: '2'
+services:
+  db:
+    image: postgres
+    volumes:
+      - .:/tmp/data
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+  web:
+    build: .
+    command: bash -c "rm shared/pids/puma.pid & bundle exec puma -e production -b unix:///app/shared/sockets/puma.sock"
+    #command: bash -c "rm shared/pids/server.pid & RAILS_ENV=development bundle exec rails s -b '0.0.0.0'"
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+    ports:
+      - "3000"
+    environment:
+      - SECRET_KEY_BASE
+      - POSTGRES_PASSWORD
+  nginx:
+    image: nginx
+    volumes:
+      - .:/app
+      - ./config/nginx.conf:/etc/nginx/conf.d/default.conf
+    volumes_from:
+      - web
+    ports:
+      - "80:80"
+    environment:
+      - NGINX_HOST=api.test.co
+      - NGINX_PORT=80
+    #cd cocommand: /bin/bash -c "envsubst < /etc/nginx/nginx.conf > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+    depends_on:
+      - web
+    links:
+      - web:web
